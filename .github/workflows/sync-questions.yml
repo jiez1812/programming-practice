@@ -1,0 +1,64 @@
+name: Sync Questions to Questions Branch
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-questions:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Checkout questions branch
+        run: |
+          git fetch origin questions:questions || git checkout -b questions
+          git checkout questions
+
+      - name: Clear questions branch (except root files)
+        run: |
+          # Keep LICENSE and root readme.md, remove everything else
+          find . -mindepth 1 -maxdepth 1 ! -name 'LICENSE' ! -name 'readme.md' ! -name '.git' -exec rm -rf {} +
+
+      - name: Copy question READMEs from main
+        run: |
+          git checkout main -- .
+
+          # Find all directories that contain README.md (excluding root)
+          # This assumes question folders are in the root directory
+          for dir in */; do
+            if [ -f "${dir}README.md" ]; then
+              # Keep only the README.md, remove solution folders
+              question_dir="${dir%/}"
+              mkdir -p "$question_dir"
+              git checkout main -- "$question_dir/README.md"
+
+              # Remove all solution folders (python, javascript, java, etc.)
+              find "$question_dir" -mindepth 1 -type d -exec rm -rf {} + 2>/dev/null || true
+              find "$question_dir" -type f ! -name 'README.md' -delete
+            fi
+          done
+
+          # Remove .github directory from questions branch
+          rm -rf .github
+
+      - name: Commit and push changes
+        run: |
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Sync questions from main branch"
+            git push origin questions
+          fi
