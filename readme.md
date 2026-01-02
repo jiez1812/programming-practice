@@ -4,6 +4,7 @@ This is a programming language repository that contains various questions and so
 
 
 # Repository Structure
+```
 {question-name}/
   ├── python/
   │   └── solution1.py
@@ -13,3 +14,4 @@ This is a programming language repository that contains various questions and so
   ├── java/
   │   └── Solution.java
   └── README.md
+```
