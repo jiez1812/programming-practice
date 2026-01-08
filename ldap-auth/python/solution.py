@@ -1,10 +1,6 @@
 from ldap3 import Server, Connection, ALL, NTLM
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
-
-def authenticate_ad(url, user, password, get_info=ALL):
+def authenticate_ad(url, user, password):
     try:
         server = Server(url)
         conn = Connection(
@@ -21,10 +17,30 @@ def authenticate_ad(url, user, password, get_info=ALL):
     except Exception as e:
         print(f'Authentication failed: {e}')
         return False
+    
+def find_user_dn(url, user, password, search_base, search_filter):
+    try:
+        server = Server(url)
+        conn = Connection(
+            server,
+            user=user,
+            password=password,
+            authentication=NTLM,
+            auto_bind=True
+        )
+        
+        conn.search(search_base, search_filter, attributes=['distinguishedName'])
+        
+        if conn.entries:
+            user_dn = conn.entries[0].distinguishedName.value
+            print(f'User DN: {user_dn}')
+            conn.unbind()
+            return user_dn
+        else:
+            print('User not found')
+            conn.unbind()
+            return None
 
-if __name__ == "__main__":
-    server_url = os.getenv('SERVER_URL')
-    domain = os.getenv('DOMAIN')
-    username = os.getenv('USERNAME')
-    password = os.getenv('PASSWORD')
-    authenticate_ad(server_url, f'{domain}\\{username}', password)
+    except Exception as e:
+        print(f'Error finding user DN: {e}')
+        return None
